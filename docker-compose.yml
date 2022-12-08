@@ -1,0 +1,27 @@
+version: "3.3"
+services:
+  spark-master:
+    image: cluster-apache-spark:3.3.0
+    build: .
+    ports:
+      - "4040:4040"
+      - "7077:7077"
+      - "8080:8080"
+      - "8786:8786"
+      - "8787:8787"
+      - "8888:8888"
+    volumes:
+      - ./apps:/opt/spark-apps
+      - ./data:/opt/spark-data
+      - .:/rapids/notebooks/ECD-TCC
+    environment:
+      - SPARK_DRIVER_MEMORY=8G
+      - SPARK_LOCAL_IP=spark-master
+      - SPARK_WORKLOAD=master
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]

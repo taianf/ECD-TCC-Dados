@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# IDE
+.idea/
+*.iml
+/.bsp/
+/metastore_db/
+/spark-warehouse/
+/jupyter/metastore_db/
+/jupyter/spark-warehouse/
