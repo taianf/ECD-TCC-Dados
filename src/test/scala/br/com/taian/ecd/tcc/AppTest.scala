@@ -1,5 +1,6 @@
 package br.com.taian.ecd.tcc
 
+import br.com.taian.ecd.tcc.session.SparkSessionTrait
 import org.apache.spark.ml.PipelineModel
 import org.apache.spark.ml.classification._
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
@@ -84,7 +85,7 @@ class AppTest extends AnyWordSpec with BeforeAndAfter with SparkSessionTrait {
           "regressão logística",
           tempoTreino,
           numTreino,
-          1.0 * tempoTreino / numTreino,
+          (1.0 * tempoTreino / numTreino).round,
           accuracy,
           precision,
           recall,
@@ -150,7 +151,7 @@ class AppTest extends AnyWordSpec with BeforeAndAfter with SparkSessionTrait {
           "Floresta Aleatória",
           tempoTreino,
           numTreino,
-          1.0 * tempoTreino / numTreino,
+          (1.0 * tempoTreino / numTreino).round,
           accuracy,
           precision,
           recall,
@@ -198,7 +199,7 @@ class AppTest extends AnyWordSpec with BeforeAndAfter with SparkSessionTrait {
           "gbt",
           tempoTreino,
           numTreino,
-          1.0 * tempoTreino / numTreino,
+          (1.0 * tempoTreino / numTreino).round,
           accuracy,
           precision,
           recall,
@@ -246,7 +247,7 @@ class AppTest extends AnyWordSpec with BeforeAndAfter with SparkSessionTrait {
           "mlp",
           tempoTreino,
           numTreino,
-          1.0 * tempoTreino / numTreino,
+          (1.0 * tempoTreino / numTreino).round,
           accuracy,
           precision,
           recall,
@@ -260,7 +261,9 @@ class AppTest extends AnyWordSpec with BeforeAndAfter with SparkSessionTrait {
       val bestModel    = bestPipeline.stages.last
         .asInstanceOf[MultilayerPerceptronClassificationModel]
       println(s"Melhor modelo MLP:\n$bestModel")
-      Seq(bestModel.getLayers).toDF("layers").show()
+      Seq((bestModel.getLayers, bestModel.getSolver))
+        .toDF("layers", "solver")
+        .show()
 
     }
 
@@ -292,7 +295,7 @@ class AppTest extends AnyWordSpec with BeforeAndAfter with SparkSessionTrait {
           "lsvc",
           tempoTreino,
           numTreino,
-          1.0 * tempoTreino / numTreino,
+          (1.0 * tempoTreino / numTreino).round,
           accuracy,
           precision,
           recall,
@@ -354,7 +357,7 @@ class AppTest extends AnyWordSpec with BeforeAndAfter with SparkSessionTrait {
           "nb",
           tempoTreino,
           numTreino,
-          1.0 * tempoTreino / numTreino,
+          (1.0 * tempoTreino / numTreino).round,
           accuracy,
           precision,
           recall,
@@ -399,7 +402,7 @@ class AppTest extends AnyWordSpec with BeforeAndAfter with SparkSessionTrait {
           "fm",
           tempoTreino,
           numTreino,
-          1.0 * tempoTreino / numTreino,
+          (1.0 * tempoTreino / numTreino).round,
           accuracy,
           precision,
           recall,

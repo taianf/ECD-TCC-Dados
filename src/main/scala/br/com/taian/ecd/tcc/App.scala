@@ -1,7 +1,8 @@
 package br.com.taian.ecd.tcc
 
+import br.com.taian.ecd.tcc.session.SparkSessionTrait
 import org.apache.spark.ml.classification._
-import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
@@ -38,31 +39,43 @@ object App extends SparkSessionTrait {
       "IMUNODEPRE",
       "RENAL",
       "OBESIDADE",
+      "NU_IDADE_N",
+      "CS_SEXO",
       // "VACINA_COV",
       // "VACINA",
       "EVOLUCAO"
     )
     val featureList  = selectCols.filter(_ != "EVOLUCAO")
 
-    val rawDF      = spark.read
+    val rawDF = spark.read
       .option("header", "true")
       .option("sep", ";")
       .csv(s"$datasetsPath/raw")
+
     // Filtrando apenas casos de covid
     val filteredDf = rawDF
       .where("CLASSI_FIN == 5")
       .where("VACINA_COV <> '12/02/2021'")
       .where("EVOLUCAO = '1' or EVOLUCAO = '2'")
+      .where("TP_IDADE = 3")
       .select(selectCols.map(col): _*)
-      .repartition()
 
     // Convertendo string para int
     val intDf = featureList
       .foldLeft(filteredDf) { case (fdf, column) =>
-        fdf.withColumn(column, when(col(column) === "1", 1).otherwise(0))
+        if (column == "NU_IDADE_N")
+          fdf.withColumn(column, col(column).cast("Integer"))
+        else if (column == "CS_SEXO")
+          fdf.withColumn(
+            column,
+            when(col(column) === "M", 1)
+              .when(col(column) === "F", 0)
+              .otherwise(null)
+          )
+        else fdf.withColumn(column, when(col(column) === "1", 1).otherwise(0))
       }
-      .withColumn("label", $"EVOLUCAO".as[Int] - 1)
-      .cache()
+      .where(col("CS_SEXO").isNotNull)
+      .withColumn("label", ($"EVOLUCAO".as[Int] - 1).cast("Integer"))
 
     // /** Já foi verificado ter menos óbitos que curados. Isso garante que vamos
     //   * ter praticamente a mesma quantidade de curados e óbitos para evitar
@@ -115,13 +128,16 @@ object App extends SparkSessionTrait {
       .addGrid(rf.maxDepth, Array(5, 10, 15, 25, 30))
       .build()
     val paramGridGbt  = new ParamGridBuilder()
-      .addGrid(gbt.maxIter, Array(10, 20, 30))
-      .addGrid(gbt.maxDepth, Array(2, 6, 10))
+      .addGrid(gbt.maxIter, Array(10, 20, 30, 40, 50))
+      .addGrid(gbt.maxDepth, Array(2, 6, 10, 15, 20))
       .build()
     val paramGridMlp  = new ParamGridBuilder()
       .addGrid(
         mlp.layers,
         Array[Array[Int]](
+          Array[Int](featuresNumber, 5, classesNumber),
+          Array[Int](featuresNumber, 10, classesNumber),
+          Array[Int](featuresNumber, 20, classesNumber),
           Array[Int](featuresNumber, 5, 5, classesNumber),
           Array[Int](featuresNumber, 10, 10, classesNumber),
           Array[Int](featuresNumber, 20, 20, classesNumber),
@@ -130,6 +146,7 @@ object App extends SparkSessionTrait {
           Array[Int](featuresNumber, 20, 20, 20, classesNumber)
         )
       )
+      .addGrid(mlp.solver, Array("l-bfgs", "gd"))
       .build()
     val paramGridLsvc = new ParamGridBuilder()
       .addGrid(lsvc.maxIter, Array(1, 2, 3))
@@ -137,7 +154,7 @@ object App extends SparkSessionTrait {
       .build()
     val paramGridNb   = new ParamGridBuilder().build()
     val paramGridFm   = new ParamGridBuilder()
-      .addGrid(fm.maxIter, Array(1, 5, 10))
+      .addGrid(fm.maxIter, Array(1, 5, 10, 15, 20))
       .addGrid(fm.regParam, Array(0.01, 0.02, 0.1))
       .addGrid(fm.stepSize, Array(0.001, 0.005, 0.01, 0.05, 0.1))
       .build()
@@ -156,28 +173,36 @@ object App extends SparkSessionTrait {
         Array(trainingSplit, 1 - trainingSplit)
         // seed = splitSeed
       )
-      .map(_.cache())
+      .map(_.repartition().cache())
 
     featureList.toDS().write.mode(Overwrite).json(s"$datasetsPath/features")
     trainingData.write.mode(Overwrite).parquet(s"$datasetsPath/training")
     testData.write.mode(Overwrite).parquet(s"$datasetsPath/test")
 
-    val f1 =
+    lazy val f1 =
       model(cvLr, trainingData, s"$datasetsPath/model/spark-model-lr")
-    val f2 =
+    lazy val f2 =
       model(cvRf, trainingData, s"$datasetsPath/model/spark-model-rf")
-    val f3 =
+    lazy val f3 =
       model(cvGbt, trainingData, s"$datasetsPath/model/spark-model-gbt")
-    val f4 =
+    lazy val f4 =
       model(cvMlp, trainingData, s"$datasetsPath/model/spark-model-mlp")
-    val f5 =
+    lazy val f5 =
       model(cvLsvc, trainingData, s"$datasetsPath/model/spark-model-lsvc")
-    val f6 =
+    lazy val f6 =
       model(cvNb, trainingData, s"$datasetsPath/model/spark-model-nb")
-    val f7 =
+    lazy val f7 =
       model(cvFm, trainingData, s"$datasetsPath/model/spark-model-fm")
 
-    Seq(f1, f2, f3, f4, f5, f6, f7)
+    Seq(
+      f1,
+      f2,
+      f3,
+      f4,
+      f5,
+      f6,
+      f7
+    )
       .toDF("model", "time", "numTrains")
       .write
       .mode(Overwrite)
@@ -191,8 +216,8 @@ object App extends SparkSessionTrait {
   ): CrossValidator = new CrossValidator()
     .setEstimator(pipeline)
     .setEstimatorParamMaps(paramGrid)
-    .setEvaluator(new BinaryClassificationEvaluator())
-    .setNumFolds(3)
+    .setEvaluator(new MulticlassClassificationEvaluator())
+    .setNumFolds(5)
     .setParallelism(12)
 
   private def getPipeline(classifier: PipelineStage) = new Pipeline()
@@ -206,10 +231,10 @@ object App extends SparkSessionTrait {
     val startTime = LocalDateTime.now()
     println(s"Start time of $savePath: $startTime")
     val cvModel   = crossval.fit(trainingData)
-    cvModel.write.overwrite().save(savePath)
     val endTime   = LocalDateTime.now()
+    cvModel.write.overwrite().save(savePath)
     println(s"End time of $savePath: $endTime")
-    val duration  = ChronoUnit.SECONDS.between(startTime, endTime)
+    val duration  = ChronoUnit.MILLIS.between(startTime, endTime)
     println(s"Total time of $savePath: $duration s")
     (
       savePath,
