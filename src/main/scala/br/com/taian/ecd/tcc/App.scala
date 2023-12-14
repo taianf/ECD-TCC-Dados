@@ -1,18 +1,15 @@
 package br.com.taian.ecd.tcc
 
 import br.com.taian.ecd.tcc.session.SparkSessionTrait
+import org.apache.spark.ml.{Pipeline, PipelineStage}
 import org.apache.spark.ml.classification._
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
-import org.apache.spark.ml.{Pipeline, PipelineStage}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SaveMode.Overwrite
 import org.apache.spark.sql.functions.{col, when}
-
-import java.time.LocalDateTime
-import java.time.temporal.ChronoUnit
 
 object App extends SparkSessionTrait {
   // Ajuste o valor do tamanho dos dados de treino.
@@ -24,7 +21,7 @@ object App extends SparkSessionTrait {
 
     import spark.implicits._
 
-    val datasetsPath = "datasets"
+    val datasetsPath = "work/datasets"
     //  val splitSeed    = 19900111L
     val selectCols   = Seq(
       "PUERPERA",

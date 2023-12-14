@@ -1,0 +1,9 @@
+jupyter
+jupyterlab
+matplotlib
+numpy
+pandas
+pipfile
+pyarrow
+pyspark
+seaborn
