@@ -5,15 +5,15 @@ import org.apache.spark.ml.PipelineModel
 import org.apache.spark.ml.classification._
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.tuning.CrossValidatorModel
-import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SaveMode}
+import org.apache.spark.sql.functions._
 import org.scalatest.BeforeAndAfter
 import org.scalatest.wordspec.AnyWordSpec
 class AppTest extends AnyWordSpec with BeforeAndAfter with SparkSessionTrait {
 
   import spark.implicits._
 
-  val datasetsPath: String           = "datasets"
+  val datasetsPath: String           = "work/datasets"
   val modelsPath: String             = s"$datasetsPath/model"
   val trainingData: DataFrame        = spark.read
     .parquet(s"$datasetsPath/training")

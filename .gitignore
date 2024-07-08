@@ -134,5 +134,11 @@ dmypy.json
 /.bsp/
 /metastore_db/
 /spark-warehouse/
-/jupyter/metastore_db/
-/jupyter/spark-warehouse/
+/work/notebooks/metastore_db/
+/work/notebooks/spark-warehouse/
+.metals/metals.lock.db
+/.metals/metals.mv.db
+/.vscode/settings.json
+
+# sbt
+project/build.properties
